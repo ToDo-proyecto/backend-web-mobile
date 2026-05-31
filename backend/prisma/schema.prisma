@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Para desarrollo local usamos SQLite (sin instalar nada)
+// Para producción (Cloud SQL) cambiar a:
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model TaskList {
+  id        String     @id @default(cuid())
+  userId    String
+  title     String
+  subtitle  String     @default("")
+  color     String     @default("#3B82F6")
+  icon      String     @default("list")
+  tags      String     @default("[]") // JSON array serializado
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  items     TaskItem[]
+
+  @@index([userId])
+}
+
+model TaskItem {
+  id          String    @id @default(cuid())
+  listId      String
+  list        TaskList  @relation(fields: [listId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  completed   Boolean   @default(false)
+  priority    String    @default("medium") // SQLite no soporta enums
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([listId])
+}
