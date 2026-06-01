@@ -1,79 +1,50 @@
-# Todo Mobile
+# Welcome to your Expo app 👋
 
-Aplicación móvil de gestión de tareas construida con React Native y Expo. Permite crear listas de tareas, agregar ítems con prioridad y fecha límite, y marcarlos como completados.
+This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
-## Tecnologías
+## Get started
 
-- **React Native** con **Expo** (SDK 52)
-- **Expo Router** — navegación basada en archivos
-- **Firebase Authentication** — autenticación con email/password
-- **NativeWind** — estilos con Tailwind CSS
-- **Gluestack UI** — componentes de UI
-- **Axios** — peticiones HTTP al backend
+1. Install dependencies
 
-## Requisitos previos
+   ```bash
+   npm install
+   ```
 
-- Node.js 18+
-- pnpm (`npm install -g pnpm`)
-- Expo Go instalado en tu celular ([iOS](https://apps.apple.com/app/expo-go/id982107779) / [Android](https://play.google.com/store/apps/details?id=host.exp.exponent))
+2. Start the app
 
-## Instalación
+   ```bash
+   npx expo start
+   ```
 
-```bash
-cd frontend
-pnpm install
-```
+In the output, you'll find options to open the app in a
 
-## Variables de entorno
+- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
+- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
+- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-Crea un archivo `.env` en la carpeta `frontend/` con el siguiente contenido:
+You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-```env
-EXPO_PUBLIC_STORYBOOK_ENABLED=false
+## Get a fresh project
 
-EXPO_PUBLIC_FIREBASE_API_KEY=tu_api_key
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=tu_proyecto.firebaseapp.com
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=tu_proyecto
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=tu_proyecto.firebasestorage.app
-EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=tu_sender_id
-EXPO_PUBLIC_FIREBASE_APP_ID=tu_app_id
-
-EXPO_PUBLIC_API_URL=https://todo-backend-117948004008.us-central1.run.app
-```
-
-> El archivo `.env` con las credenciales reales se encuentra en el ZIP entregado en la tarea.
-
-## Cómo ejecutar
+When you're ready, run:
 
 ```bash
-pnpm start
+npm run reset-project
 ```
 
-Escanea el QR con la app **Expo Go** en tu celular. Si no estás en la misma red WiFi, usa:
+This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
-```bash
-pnpm start --tunnel
-```
+## Learn more
 
-## Backend desplegado
+To learn more about developing your project with Expo, look at the following resources:
 
-```
-https://todo-backend-117948004008.us-central1.run.app
-```
+- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
+- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-## Usuarios de prueba
+## Join the community
 
-| Email | Contraseña |
-|-------|------------|
-| medsync@gmail.com | medsync |
+Join our community of developers creating universal apps.
 
-> También puedes crear tu propia cuenta desde la pantalla de registro.
-
-## Funcionalidades
-
-- Registro e inicio de sesión con email/password
-- Crear, editar y eliminar listas de tareas
-- Agregar tareas con título, descripción, prioridad (low/medium/high) y fecha límite
-- Marcar tareas como completadas
-- Buscador de listas
-- Perfil de usuario con edición de nombre
+- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
+- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
