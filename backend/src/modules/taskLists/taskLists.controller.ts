@@ -31,7 +31,7 @@ export async function getTaskLists(req: Request, res: Response, next: NextFuncti
       include: { items: { select: { completed: true } } },
       orderBy: { createdAt: 'desc' },
     });
-    res.json(lists.map((l) => toClientShape(l, l.items)));
+    res.json(lists.map((l: any) => toClientShape(l, l.items)));
   } catch (err) {
     next(err);
   }

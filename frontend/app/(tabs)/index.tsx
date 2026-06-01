@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { FlatList, Pressable, RefreshControl, View, Alert, useWindowDimensions } from 'react-native';
+import { FlatList, Pressable, RefreshControl, View, Alert, useWindowDimensions, Text as RNText, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -29,6 +29,8 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingList, setEditingList] = useState<TaskList | null>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const firstName = user?.displayName?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there';
   const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -54,10 +56,11 @@ export default function HomeScreen() {
   };
 
   const handleLongPress = (item: TaskList) => {
-    Alert.alert(item.title, undefined, [
+    Alert.alert(item.title, 'What would you like to do?', [
       { text: 'Cancel', style: 'cancel' },
+      { text: 'Edit', onPress: () => setEditingList(item) },
       {
-        text: 'Delete list',
+        text: 'Delete',
         style: 'destructive',
         onPress: async () => {
           try {
@@ -71,72 +74,87 @@ export default function HomeScreen() {
     ]);
   };
 
+  const activeLists = lists.filter(l => l.percentage < 100);
+  const completedLists = lists.filter(l => l.percentage === 100);
   const avg = lists.length ? Math.round(lists.reduce((s, l) => s + l.percentage, 0) / lists.length) : 0;
-  const completed = lists.filter(l => l.percentage === 100).length;
   const statW = (width - 48 - 16) / 3;
 
   const ListHeader = (
     <View style={{ paddingTop: 8 }}>
       {/* Greeting */}
-      <View style={{ marginBottom: 24 }}>
-        <Text style={{ fontSize: 22, fontWeight: '700', color: '#ECEDEE', letterSpacing: -0.2 }} numberOfLines={1} adjustsFontSizeToFit>
+      <View style={{ marginBottom: 20, paddingTop: 4 }}>
+        <RNText style={{ fontSize: 24, fontWeight: '800', color: '#ECEDEE', lineHeight: 32 }} numberOfLines={1} adjustsFontSizeToFit>
           {getGreeting()}, {firstName}!
-        </Text>
-        <Text style={{ fontSize: 13, color: '#9BA1A6', marginTop: 3 }}>{date}</Text>
+        </RNText>
+        <RNText style={{ fontSize: 13, color: '#9BA1A6', marginTop: 4 }}>{date}</RNText>
       </View>
 
       {/* Stats */}
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 28 }}>
+      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 28 }}>
         {[
-          { label: 'Lists', value: String(lists.length), color: '#0a7ea4' },
-          { label: 'Avg. Progress', value: `${avg}%`, color: '#8B5CF6' },
-          { label: 'Done', value: String(completed), color: '#10B981' },
+          { label: 'Total Lists',   value: String(lists.length),           color: '#0a7ea4' },
+          { label: 'Avg. Progress', value: `${avg}%`,                      color: '#8B5CF6' },
+          { label: 'Completed',     value: String(completedLists.length),  color: '#10B981' },
         ].map(s => (
           <View key={s.label} style={{
-            width: statW,
+            flex: 1,
             backgroundColor: '#1E2122',
             borderWidth: 1, borderColor: '#2D3235',
-            borderRadius: 18, padding: 14, alignItems: 'center',
+            borderRadius: 18, paddingVertical: 16, paddingHorizontal: 10,
+            alignItems: 'center',
             shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.15, shadowRadius: 6,
           }}>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: s.color }}>{s.value}</Text>
-            <Text style={{ fontSize: 11, color: '#9BA1A6', marginTop: 3, textAlign: 'center' }}>{s.label}</Text>
+            <RNText style={{ fontSize: 24, fontWeight: '800', color: s.color, lineHeight: 30 }}>{s.value}</RNText>
+            <RNText style={{ fontSize: 10, color: '#9BA1A6', marginTop: 4, textAlign: 'center', fontWeight: '600' }}>{s.label}</RNText>
           </View>
         ))}
       </View>
 
       {/* Section header */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <Text style={{ fontSize: 19, fontWeight: '700', color: '#ECEDEE' }}>My Lists</Text>
-        <Pressable
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <RNText style={{ fontSize: 18, fontWeight: '700', color: '#ECEDEE' }}>My Lists</RNText>
+        <TouchableOpacity
           onPress={() => setShowCreate(true)}
-          style={({ pressed }) => ({
+          activeOpacity={0.75}
+          style={{
             flexDirection: 'row', alignItems: 'center', gap: 6,
             backgroundColor: '#0a7ea4',
-            paddingLeft: 8, paddingRight: 14, paddingVertical: 8,
-            borderRadius: 14,
-            borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)',
-            borderBottomWidth: 2, borderBottomColor: 'rgba(0,0,0,0.22)',
-            borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.1)',
-            borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.1)',
-            shadowColor: '#0a7ea4', shadowOffset: { width: 0, height: 5 },
-            shadowOpacity: pressed ? 0.2 : 0.45, shadowRadius: 10, elevation: 6,
-            transform: [{ scale: pressed ? 0.97 : 1 }],
-          })}
+            paddingHorizontal: 16, paddingVertical: 10,
+            borderRadius: 10,
+          }}
         >
-          <View style={{
-            width: 24, height: 24, borderRadius: 12,
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            <MaterialIcons name="add" size={16} color="white" />
-          </View>
-          <Text style={{ fontSize: 13, color: 'white', fontWeight: '800' }}>New List</Text>
-        </Pressable>
+          <MaterialIcons name="add" size={16} color="white" />
+          <RNText style={{ fontSize: 13, color: 'white', fontWeight: '700' }}>New List</RNText>
+        </TouchableOpacity>
       </View>
     </View>
   );
+
+  const CompletedSection = completedLists.length > 0 ? (
+    <View style={{ marginTop: 8, marginBottom: 8 }}>
+      <Pressable
+        onPress={() => setShowCompleted(v => !v)}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14 }}
+      >
+        <MaterialIcons
+          name={showCompleted ? 'expand-less' : 'expand-more'}
+          size={20} color="#9BA1A6"
+        />
+        <Text style={{ color: '#9BA1A6', fontSize: 14, fontWeight: '600' }}>
+          Completed Lists ({completedLists.length})
+        </Text>
+      </Pressable>
+      {showCompleted && completedLists.map(item => (
+        <TaskListCard
+          key={item.id}
+          item={item}
+          onPress={() => router.push({ pathname: '/lists/[id]' as any, params: { id: item.id } })}
+          onLongPress={() => handleLongPress(item)}
+        />
+      ))}
+    </View>
+  ) : null;
 
   if (loading) {
     return (
@@ -164,7 +182,7 @@ export default function HomeScreen() {
           </View>
         ) : (
           <FlatList
-            data={lists}
+            data={activeLists}
             keyExtractor={item => item.id}
             renderItem={({ item }) => (
               <TaskListCard
@@ -175,59 +193,23 @@ export default function HomeScreen() {
             )}
             ListHeaderComponent={ListHeader}
             ListEmptyComponent={
-              <EmptyState
-                icon="playlist-add"
-                title="No lists yet"
-                subtitle="Tap + New or the button below to create your first list"
-              />
+              lists.length === 0 ? (
+                <EmptyState
+                  icon="playlist-add"
+                  title="No lists yet"
+                  subtitle="Tap + New List to create your first one"
+                />
+              ) : null
             }
+            ListFooterComponent={CompletedSection}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4" />
             }
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
           />
         )}
 
-        {/* FAB extendido */}
-        {!error && (
-          <Pressable
-            onPress={() => setShowCreate(true)}
-            style={({ pressed }) => ({
-              position: 'absolute',
-              bottom: insets.bottom + 20,
-              left: 0, right: 0,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              backgroundColor: '#0a7ea4',
-              paddingVertical: 18,
-              borderRadius: 20,
-              borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)',
-              borderBottomWidth: 2, borderBottomColor: 'rgba(0,0,0,0.22)',
-              borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.1)',
-              borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.1)',
-              shadowColor: '#0a7ea4',
-              shadowOffset: { width: 0, height: 10 },
-              shadowOpacity: pressed ? 0.2 : 0.55,
-              shadowRadius: 20,
-              elevation: 12,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
-            })}
-          >
-            <View style={{
-              width: 30, height: 30, borderRadius: 15,
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <MaterialIcons name="add" size={20} color="white" />
-            </View>
-            <Text style={{ color: 'white', fontSize: 17, fontWeight: '800', letterSpacing: 0.3 }}>
-              New List
-            </Text>
-          </Pressable>
-        )}
       </View>
 
       <CreateListSheet
@@ -236,6 +218,16 @@ export default function HomeScreen() {
         onCreated={newList => {
           setLists(prev => [newList, ...prev]);
           setShowCreate(false);
+        }}
+      />
+      <CreateListSheet
+        visible={!!editingList}
+        initialList={editingList ?? undefined}
+        onClose={() => setEditingList(null)}
+        onCreated={() => {}}
+        onUpdated={updated => {
+          setLists(prev => prev.map(l => l.id === updated.id ? updated : l));
+          setEditingList(null);
         }}
       />
     </SafeAreaView>

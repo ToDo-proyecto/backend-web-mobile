@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import {
   Modal, View, TextInput, Pressable,
   KeyboardAvoidingView, Platform, ScrollView,
-  TouchableWithoutFeedback, ActivityIndicator,
+  TouchableWithoutFeedback, ActivityIndicator, TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Text } from '@/components/ui/text';
-import { createTaskList } from '@/services/tasks/taskLists';
+import { Text as RNText } from 'react-native';
+import { createTaskList, updateTaskList } from '@/services/tasks/taskLists';
 import { TaskList } from '@/types/TaskList';
 
 const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#F97316'];
@@ -30,24 +31,39 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   onCreated: (list: TaskList) => void;
+  initialList?: TaskList;
+  onUpdated?: (list: TaskList) => void;
 };
 
-export default function CreateListSheet({ visible, onClose, onCreated }: Props) {
+export default function CreateListSheet({ visible, onClose, onCreated, initialList, onUpdated }: Props) {
   const insets = useSafeAreaInsets();
-  const [title, setTitle] = useState('');
-  const [subtitle, setSubtitle] = useState('');
-  const [tags, setTags] = useState('');
-  const [color, setColor] = useState(COLORS[0]);
-  const [icon, setIcon] = useState<keyof typeof MaterialIcons.glyphMap>('code');
+  const isEdit = !!initialList;
+  const [title, setTitle] = useState(initialList?.title ?? '');
+  const [subtitle, setSubtitle] = useState(initialList?.subtitle ?? '');
+  const [tags, setTags] = useState(initialList?.tags.join(', ') ?? '');
+  const [color, setColor] = useState(initialList?.idColor ?? COLORS[0]);
+  const [icon, setIcon] = useState<keyof typeof MaterialIcons.glyphMap>(
+    (initialList?.idIcon as keyof typeof MaterialIcons.glyphMap) ?? 'code'
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  React.useEffect(() => {
+    if (visible && initialList) {
+      setTitle(initialList.title);
+      setSubtitle(initialList.subtitle ?? '');
+      setTags(initialList.tags.join(', '));
+      setColor(initialList.idColor ?? COLORS[0]);
+      setIcon((initialList.idIcon as keyof typeof MaterialIcons.glyphMap) ?? 'code');
+    }
+  }, [visible, initialList]);
 
   const reset = () => {
     setTitle(''); setSubtitle(''); setTags('');
     setColor(COLORS[0]); setIcon('code'); setError('');
   };
 
-  const handleClose = () => { reset(); onClose(); };
+  const handleClose = () => { if (!isEdit) reset(); setError(''); onClose(); };
 
   const handleCreate = async () => {
     if (!title.trim()) { setError('Title is required'); return; }
@@ -55,14 +71,22 @@ export default function CreateListSheet({ visible, onClose, onCreated }: Props) 
     setLoading(true);
     try {
       const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
-      const list = await createTaskList({
-        title: title.trim(), subtitle: subtitle.trim(),
-        tags: tagList, idColor: color, idIcon: icon,
-      });
-      onCreated(list);
-      reset();
+      if (isEdit && initialList) {
+        const list = await updateTaskList(initialList.id, {
+          title: title.trim(), subtitle: subtitle.trim(),
+          tags: tagList, idColor: color, idIcon: icon,
+        });
+        onUpdated?.(list);
+      } else {
+        const list = await createTaskList({
+          title: title.trim(), subtitle: subtitle.trim(),
+          tags: tagList, idColor: color, idIcon: icon,
+        });
+        onCreated(list);
+        reset();
+      }
     } catch {
-      setError('Could not create list. Is the backend running?');
+      setError(`Could not ${isEdit ? 'update' : 'create'} list. Is the backend running?`);
     } finally {
       setLoading(false);
     }
@@ -86,7 +110,7 @@ export default function CreateListSheet({ visible, onClose, onCreated }: Props) 
 
                 {/* Header */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                  <Text style={{ fontSize: 20, fontWeight: '700', color: '#ECEDEE' }}>New List</Text>
+                  <Text style={{ fontSize: 20, fontWeight: '700', color: '#ECEDEE' }}>{isEdit ? 'Edit List' : 'New List'}</Text>
                   <Pressable onPress={handleClose} hitSlop={8}>
                     <MaterialIcons name="close" size={22} color="#9BA1A6" />
                   </Pressable>
@@ -146,39 +170,24 @@ export default function CreateListSheet({ visible, onClose, onCreated }: Props) 
                     </View>
                   )}
 
-                  <Pressable
+                  <TouchableOpacity
                     onPress={handleCreate}
                     disabled={loading}
-                    style={({ pressed }) => ({
-                      backgroundColor: color, borderRadius: 18,
-                      paddingVertical: 18,
-                      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-                      borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)',
-                      borderBottomWidth: 2, borderBottomColor: 'rgba(0,0,0,0.22)',
-                      borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.1)',
-                      borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.1)',
-                      shadowColor: color, shadowOffset: { width: 0, height: 10 },
-                      shadowOpacity: pressed || loading ? 0.2 : 0.55, shadowRadius: 20,
-                      transform: [{ scale: pressed ? 0.98 : 1 }],
-                    })}
+                    activeOpacity={0.75}
+                    style={{
+                      backgroundColor: color, borderRadius: 22,
+                      paddingVertical: 17,
+                      alignItems: 'center', justifyContent: 'center',
+                      opacity: loading ? 0.6 : 1,
+                    }}
                   >
-                    {loading ? (
-                      <ActivityIndicator color="white" size="small" />
-                    ) : (
-                      <>
-                        <Text style={{ color: 'white', fontSize: 17, fontWeight: '800', letterSpacing: 0.3 }}>
-                          Create List
-                        </Text>
-                        <View style={{
-                          width: 28, height: 28, borderRadius: 14,
-                          backgroundColor: 'rgba(255,255,255,0.2)',
-                          alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <MaterialIcons name="check" size={16} color="white" />
-                        </View>
-                      </>
-                    )}
-                  </Pressable>
+                    {loading
+                      ? <ActivityIndicator color="white" size="small" />
+                      : <RNText style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
+                          {isEdit ? 'Save Changes' : 'Create List'}
+                        </RNText>
+                    }
+                  </TouchableOpacity>
                 </ScrollView>
               </View>
             </KeyboardAvoidingView>

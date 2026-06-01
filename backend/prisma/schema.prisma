@@ -1,14 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
-// Para desarrollo local usamos SQLite (sin instalar nada)
-// Para producción (Cloud SQL) cambiar a:
-//   provider = "postgresql"
-//   url      = env("DATABASE_URL")
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model TaskList {

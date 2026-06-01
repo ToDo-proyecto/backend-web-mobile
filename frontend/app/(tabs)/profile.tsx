@@ -1,11 +1,14 @@
-import { View, Pressable, ScrollView, Alert } from 'react-native';
+import { useState } from 'react';
+import { View, Pressable, ScrollView, Alert, TouchableOpacity, Text as RNText, TextInput, Modal, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { updateProfile } from 'firebase/auth';
 
 import { Text } from '@/components/ui/text';
 import { useAuth } from '@/contexts/AuthContext';
 import { logout } from '@/services/auth/logout';
+import { auth } from '@/services/firebase';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -15,11 +18,33 @@ export default function ProfileScreen() {
   const email = user?.email ?? '';
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
+  const [editVisible, setEditVisible] = useState(false);
+  const [nameInput, setNameInput] = useState(name);
+  const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState('');
+
+  const handleSaveName = async () => {
+    if (!nameInput.trim()) { setNameError('Name cannot be empty'); return; }
+    setSaving(true);
+    setNameError('');
+    try {
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: nameInput.trim() });
+        await auth.currentUser.reload();
+      }
+      setEditVisible(false);
+    } catch {
+      setNameError('Failed to update name');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleLogout = () => {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Sign out', style: 'destructive',
+        text: 'Log Out', style: 'destructive',
         onPress: async () => {
           await logout();
           router.replace('/login');
@@ -35,9 +60,9 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Title */}
-        <Text style={{ fontSize: 28, fontWeight: '700', color: '#ECEDEE', marginTop: 8, marginBottom: 28 }}>
+        <RNText style={{ fontSize: 26, fontWeight: '800', color: '#ECEDEE', marginTop: 8, marginBottom: 28, lineHeight: 34, paddingTop: 4 }}>
           Profile
-        </Text>
+        </RNText>
 
         {/* Avatar card */}
         <View style={{
@@ -54,7 +79,7 @@ export default function ProfileScreen() {
             shadowColor: '#0a7ea4', shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3, shadowRadius: 10,
           }}>
-            <Text style={{ fontSize: 28, fontWeight: '800', color: 'white' }}>{initials}</Text>
+            <RNText style={{ fontSize: 28, fontWeight: '800', color: 'white', lineHeight: 36, paddingTop: 4 }}>{initials}</RNText>
           </View>
           <Text style={{ fontSize: 20, fontWeight: '700', color: '#ECEDEE', marginBottom: 4 }}>{name}</Text>
           <Text style={{ fontSize: 14, color: '#9BA1A6' }}>{email}</Text>
@@ -63,7 +88,29 @@ export default function ProfileScreen() {
         {/* Account section */}
         <SectionLabel>Account</SectionLabel>
         <Card>
-          <Row icon="badge" label="Name" value={name} />
+          {/* Name row with edit button */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 }}>
+            <View style={{
+              width: 32, height: 32, borderRadius: 8, backgroundColor: '#2D3235',
+              alignItems: 'center', justifyContent: 'center', marginRight: 12,
+            }}>
+              <MaterialIcons name="badge" size={17} color="#9BA1A6" />
+            </View>
+            <Text style={{ fontSize: 15, color: '#9BA1A6', flex: 1 }}>Name</Text>
+            <Text style={{ fontSize: 14, color: '#ECEDEE', maxWidth: '45%', textAlign: 'right' }} numberOfLines={1}>
+              {name}
+            </Text>
+            <TouchableOpacity
+              onPress={() => { setNameInput(name); setNameError(''); setEditVisible(true); }}
+              activeOpacity={0.7}
+              style={{
+                width: 28, height: 28, borderRadius: 8, backgroundColor: '#2D3235',
+                alignItems: 'center', justifyContent: 'center', marginLeft: 8,
+              }}
+            >
+              <MaterialIcons name="edit" size={14} color="#9BA1A6" />
+            </TouchableOpacity>
+          </View>
           <Divider />
           <Row icon="email" label="Email" value={email} last />
         </Card>
@@ -77,19 +124,91 @@ export default function ProfileScreen() {
         </Card>
 
         {/* Logout */}
-        <Pressable
+        <TouchableOpacity
           onPress={handleLogout}
-          style={({ pressed }) => ({
-            backgroundColor: '#1E2122', borderWidth: 1, borderColor: '#EF4444',
-            borderRadius: 18, paddingVertical: 16, alignItems: 'center',
+          activeOpacity={0.75}
+          style={{
+            borderWidth: 1, borderColor: '#EF4444',
+            borderRadius: 22, paddingVertical: 16, alignItems: 'center',
             flexDirection: 'row', justifyContent: 'center', gap: 8,
-            marginTop: 8, opacity: pressed ? 0.7 : 1,
-          })}
+            marginTop: 8,
+          }}
         >
           <MaterialIcons name="logout" size={20} color="#EF4444" />
-          <Text style={{ color: '#EF4444', fontSize: 16, fontWeight: '700' }}>Sign out</Text>
-        </Pressable>
+          <RNText style={{ color: '#EF4444', fontSize: 16, fontWeight: '700' }}>Log Out</RNText>
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Edit Name Modal */}
+      <Modal visible={editVisible} transparent animationType="fade" onRequestClose={() => setEditVisible(false)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}
+          onPress={() => setEditVisible(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: '#1E2122', borderRadius: 24, borderWidth: 1, borderColor: '#2D3235',
+              padding: 24, width: '100%', maxWidth: 360,
+            }}
+            onPress={() => {}}
+          >
+            <RNText style={{ fontSize: 18, fontWeight: '800', color: '#ECEDEE', marginBottom: 20 }}>
+              Edit Name
+            </RNText>
+
+            <View style={{
+              backgroundColor: '#252729', borderWidth: 1, borderColor: '#2D3235',
+              borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+              flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8,
+            }}>
+              <MaterialIcons name="person" size={18} color="#4A5258" />
+              <TextInput
+                value={nameInput}
+                onChangeText={setNameInput}
+                placeholder="Your name"
+                placeholderTextColor="#4A5258"
+                autoFocus
+                autoCapitalize="words"
+                style={{ color: '#ECEDEE', fontSize: 15, flex: 1 }}
+              />
+            </View>
+
+            {nameError ? (
+              <RNText style={{ color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{nameError}</RNText>
+            ) : (
+              <View style={{ height: 16 }} />
+            )}
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => setEditVisible(false)}
+                activeOpacity={0.75}
+                style={{
+                  flex: 1, borderWidth: 1, borderColor: '#2D3235',
+                  borderRadius: 14, paddingVertical: 14, alignItems: 'center',
+                }}
+              >
+                <RNText style={{ color: '#9BA1A6', fontSize: 15, fontWeight: '700' }}>Cancel</RNText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSaveName}
+                disabled={saving}
+                activeOpacity={0.75}
+                style={{
+                  flex: 1, backgroundColor: '#0a7ea4',
+                  borderRadius: 14, paddingVertical: 14, alignItems: 'center',
+                  opacity: saving ? 0.6 : 1,
+                }}
+              >
+                {saving
+                  ? <ActivityIndicator size="small" color="white" />
+                  : <RNText style={{ color: 'white', fontSize: 15, fontWeight: '700' }}>Save</RNText>
+                }
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  TextInput,
-  View,
-  ScrollView,
+  KeyboardAvoidingView, Platform, Pressable,
+  TextInput, View, ScrollView, Text as RNText, TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -17,9 +13,9 @@ import { Spinner } from '@/components/ui/spinner';
 import { register } from '@/services/auth/register';
 
 const FIREBASE_ERRORS: Record<string, string> = {
-  'auth/email-already-in-use': 'Ya existe una cuenta con ese email',
-  'auth/invalid-email': 'El email no es válido',
-  'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres',
+  'auth/email-already-in-use': 'An account with this email already exists',
+  'auth/invalid-email':        'Invalid email address',
+  'auth/weak-password':        'Password must be at least 6 characters',
 };
 
 export default function RegisterScreen() {
@@ -34,15 +30,15 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!name.trim() || !email.trim() || !password || !confirm) {
-      setError('Completa todos los campos');
+      setError('Please fill in all fields');
       return;
     }
     if (password !== confirm) {
-      setError('Las contraseñas no coinciden');
+      setError('Passwords do not match');
       return;
     }
     if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+      setError('Password must be at least 6 characters');
       return;
     }
     setError(null);
@@ -51,65 +47,22 @@ export default function RegisterScreen() {
       await register(name.trim(), email.trim(), password);
       router.replace('/(tabs)');
     } catch (err) {
-      if (err instanceof FirebaseError) {
-        setError(FIREBASE_ERRORS[err.code] ?? 'Error al crear la cuenta');
-      } else {
-        setError('Error inesperado');
-      }
+      setError(err instanceof FirebaseError
+        ? (FIREBASE_ERRORS[err.code] ?? 'Failed to create account')
+        : 'Unexpected error');
     } finally {
       setLoading(false);
     }
   };
 
-  const Field = ({
-    label, value, onChange, placeholder, secure, keyboard, returnKey, onSubmit,
-  }: any) => (
-    <View>
-      <Text style={{ fontSize: 13, color: '#9BA1A6', fontWeight: '600', marginBottom: 8 }}>
-        {label}
-      </Text>
-      <View style={{
-        backgroundColor: '#1E2122', borderWidth: 1, borderColor: '#2D3235',
-        borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
-        flexDirection: 'row', alignItems: 'center',
-      }}>
-        <TextInput
-          value={value}
-          onChangeText={onChange}
-          placeholder={placeholder}
-          placeholderTextColor="#4A5258"
-          secureTextEntry={secure && !showPassword}
-          keyboardType={keyboard ?? 'default'}
-          autoCapitalize={keyboard === 'email-address' ? 'none' : label === 'Name' ? 'words' : 'none'}
-          autoCorrect={false}
-          returnKeyType={returnKey ?? 'next'}
-          onSubmitEditing={onSubmit}
-          style={{ color: '#ECEDEE', fontSize: 16, flex: 1 }}
-        />
-        {secure && (
-          <Pressable onPress={() => setShowPassword(v => !v)} hitSlop={8}>
-            <MaterialIcons
-              name={showPassword ? 'visibility-off' : 'visibility'}
-              size={20}
-              color="#9BA1A6"
-            />
-          </Pressable>
-        )}
-      </View>
-    </View>
-  );
-
   return (
     <View style={{ flex: 1, backgroundColor: '#151718' }}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
             paddingTop: insets.top + 16,
-            paddingBottom: insets.bottom + 24,
+            paddingBottom: insets.bottom + 32,
             paddingHorizontal: 24,
           }}
           keyboardShouldPersistTaps="handled"
@@ -118,56 +71,130 @@ export default function RegisterScreen() {
           {/* Back */}
           <Pressable
             onPress={() => router.back()}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 32 }}
+            hitSlop={12}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 28, alignSelf: 'flex-start' }}
           >
-            <MaterialIcons name="arrow-back-ios" size={18} color="#9BA1A6" />
-            <Text style={{ color: '#9BA1A6', fontSize: 15 }}>Sign in</Text>
+            <View style={{
+              width: 36, height: 36, borderRadius: 12,
+              backgroundColor: '#1E2122', borderWidth: 1, borderColor: '#2D3235',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <MaterialIcons name="arrow-back-ios" size={16} color="#9BA1A6" style={{ marginLeft: 4 }} />
+            </View>
+            <Text style={{ color: '#9BA1A6', fontSize: 15 }}>Back</Text>
           </Pressable>
 
           {/* Header */}
-          <View style={{ marginBottom: 36 }}>
-            <Text style={{ fontSize: 30, fontWeight: '700', color: '#ECEDEE', marginBottom: 6 }}>
+          <View style={{ marginBottom: 32, paddingTop: 8 }}>
+            <RNText style={{ fontSize: 28, fontWeight: '800', color: '#ECEDEE', marginBottom: 6, lineHeight: 36 }}>
               Create account
-            </Text>
-            <Text style={{ fontSize: 15, color: '#9BA1A6' }}>
+            </RNText>
+            <RNText style={{ fontSize: 15, color: '#9BA1A6' }}>
               Start managing your tasks today
-            </Text>
+            </RNText>
           </View>
 
-          <View style={{ gap: 16 }}>
-            <Field label="Name" value={name} onChange={setName} placeholder="Your name" />
-            <Field label="Email" value={email} onChange={setEmail} placeholder="you@example.com" keyboard="email-address" />
-            <Field label="Password" value={password} onChange={setPassword} placeholder="Min. 6 characters" secure />
-            <Field label="Confirm password" value={confirm} onChange={setConfirm} placeholder="Repeat your password" secure returnKey="done" onSubmit={handleRegister} />
+          {/* Form card */}
+          <View style={{
+            backgroundColor: '#1E2122', borderRadius: 24,
+            borderWidth: 1, borderColor: '#2D3235',
+            padding: 24, gap: 16,
+            shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2, shadowRadius: 12,
+          }}>
+            <Field label="Name" value={name} onChange={setName} placeholder="Your name"
+              icon="person" autoCapitalize="words" />
+            <Field label="Email" value={email} onChange={setEmail} placeholder="you@example.com"
+              icon="email" keyboard="email-address" />
+            <Field label="Password" value={password} onChange={setPassword} placeholder="Min. 6 characters"
+              icon="lock" secure showPw={showPassword} onTogglePw={() => setShowPassword(v => !v)} />
+            <Field label="Confirm Password" value={confirm} onChange={setConfirm} placeholder="Repeat your password"
+              icon="lock" secure showPw={showPassword} onTogglePw={() => setShowPassword(v => !v)}
+              returnKey="done" onSubmit={handleRegister} />
 
             {error && (
               <View style={{
-                backgroundColor: '#EF444420', borderRadius: 10, borderWidth: 1,
-                borderColor: '#EF4444', paddingHorizontal: 14, paddingVertical: 10,
+                backgroundColor: '#EF444420', borderRadius: 12, borderWidth: 1,
+                borderColor: '#EF4444', paddingHorizontal: 14, paddingVertical: 12,
+                flexDirection: 'row', alignItems: 'center', gap: 8,
               }}>
-                <Text style={{ color: '#EF4444', fontSize: 13, textAlign: 'center' }}>{error}</Text>
+                <MaterialIcons name="error-outline" size={16} color="#EF4444" />
+                <Text style={{ color: '#EF4444', fontSize: 13, flex: 1 }}>{error}</Text>
               </View>
             )}
 
-            <Pressable
+            <TouchableOpacity
               onPress={handleRegister}
               disabled={loading}
-              style={({ pressed }) => ({
-                backgroundColor: '#0a7ea4', borderRadius: 14,
-                paddingVertical: 16, alignItems: 'center', marginTop: 4,
-                opacity: pressed || loading ? 0.8 : 1,
-                shadowColor: '#0a7ea4', shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.35, shadowRadius: 10, elevation: 6,
-              })}
+              activeOpacity={0.75}
+              style={{
+                backgroundColor: '#0a7ea4',
+                borderRadius: 22,
+                paddingVertical: 17,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: 4,
+                opacity: loading ? 0.6 : 1,
+              }}
             >
               {loading
                 ? <Spinner size="small" color="white" />
-                : <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Create account</Text>
+                : <RNText style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Create Account  →</RNText>
               }
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 28, gap: 4 }}>
+            <Text style={{ color: '#9BA1A6', fontSize: 14 }}>Already have an account?</Text>
+            <Pressable onPress={() => router.back()} hitSlop={8}>
+              <Text style={{ color: '#0a7ea4', fontSize: 14, fontWeight: '700' }}>Login</Text>
             </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+type FieldProps = {
+  label: string; value: string; onChange: (v: string) => void;
+  placeholder: string; icon: any; keyboard?: any;
+  autoCapitalize?: any; secure?: boolean;
+  showPw?: boolean; onTogglePw?: () => void;
+  returnKey?: any; onSubmit?: () => void;
+};
+
+function Field({ label, value, onChange, placeholder, icon, keyboard, autoCapitalize, secure, showPw, onTogglePw, returnKey, onSubmit }: FieldProps) {
+  return (
+    <View>
+      <Text style={{ fontSize: 12, color: '#9BA1A6', fontWeight: '700', marginBottom: 8, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+        {label}
+      </Text>
+      <View style={{
+        backgroundColor: '#252729', borderWidth: 1, borderColor: '#2D3235',
+        borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+      }}>
+        <MaterialIcons name={icon} size={18} color="#4A5258" />
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor="#4A5258"
+          secureTextEntry={secure && !showPw}
+          keyboardType={keyboard ?? 'default'}
+          autoCapitalize={autoCapitalize ?? 'none'}
+          autoCorrect={false}
+          returnKeyType={returnKey ?? 'next'}
+          onSubmitEditing={onSubmit}
+          style={{ color: '#ECEDEE', fontSize: 15, flex: 1 }}
+        />
+        {secure && (
+          <Pressable onPress={onTogglePw} hitSlop={10}>
+            <MaterialIcons name={showPw ? 'visibility-off' : 'visibility'} size={20} color="#4A5258" />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }

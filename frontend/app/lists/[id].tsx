@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { FlatList, Pressable, RefreshControl, View, Alert } from 'react-native';
+import { FlatList, Pressable, RefreshControl, View, Alert, Text as RNText, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import TaskItem from '@/components/TaskItem/TaskItem';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import CreateTaskSheet from '@/components/CreateTaskSheet/CreateTaskSheet';
+import EditTaskSheet from '@/components/EditTaskSheet/EditTaskSheet';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { Task } from '@/types/Task';
@@ -22,6 +23,8 @@ export default function ListDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const color = list?.idColor ?? '#0a7ea4';
 
@@ -76,8 +79,10 @@ export default function ListDetailScreen() {
     ]);
   };
 
+  const activeTasks = tasks.filter(t => !t.completed);
+  const completedTasks = tasks.filter(t => t.completed);
   const total = tasks.length;
-  const done = tasks.filter(t => t.completed).length;
+  const done = completedTasks.length;
   const percentage = total === 0 ? 0 : Math.round((done / total) * 100);
 
   const ListHeader = (
@@ -90,19 +95,28 @@ export default function ListDetailScreen() {
         shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.15, shadowRadius: 10,
       }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: '#9BA1A6', fontSize: 13, marginBottom: 2 }}>
-              {list?.subtitle || 'No description'}
-            </Text>
+        {/* Percentage + label row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <View style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
+            {!!list?.subtitle && (
+              <Text style={{ color: '#9BA1A6', fontSize: 13, marginBottom: 2 }} numberOfLines={1}>
+                {list.subtitle}
+              </Text>
+            )}
             <Text style={{ color: '#ECEDEE', fontSize: 13 }}>
-              {done} of {total} completed
+              {done} of {total} task{total !== 1 ? 's' : ''} completed
             </Text>
           </View>
-          <Text style={{ fontSize: 32, fontWeight: '800', color }}>
-            {percentage}%
-          </Text>
+          <View style={{
+            backgroundColor: color + '22', borderRadius: 14,
+            paddingHorizontal: 14, paddingVertical: 8, flexShrink: 0,
+          }}>
+            <Text style={{ fontSize: 28, fontWeight: '800', color, lineHeight: 34 }}>
+              {percentage}%
+            </Text>
+          </View>
         </View>
+        {/* Progress bar */}
         <View style={{ height: 8, backgroundColor: '#2D3235', borderRadius: 99, overflow: 'hidden' }}>
           <View style={{
             height: '100%', width: `${percentage}%`,
@@ -114,31 +128,19 @@ export default function ListDetailScreen() {
       {/* Section header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
         <Text style={{ fontSize: 17, fontWeight: '700', color: '#ECEDEE' }}>Tasks</Text>
-        <Pressable
+        <TouchableOpacity
           onPress={() => setShowCreate(true)}
-          style={({ pressed }) => ({
+          activeOpacity={0.75}
+          style={{
             flexDirection: 'row', alignItems: 'center', gap: 6,
             backgroundColor: color,
-            paddingLeft: 8, paddingRight: 14, paddingVertical: 8,
-            borderRadius: 14,
-            borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)',
-            borderBottomWidth: 2, borderBottomColor: 'rgba(0,0,0,0.22)',
-            borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.1)',
-            borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.1)',
-            shadowColor: color, shadowOffset: { width: 0, height: 5 },
-            shadowOpacity: pressed ? 0.2 : 0.45, shadowRadius: 10, elevation: 6,
-            transform: [{ scale: pressed ? 0.97 : 1 }],
-          })}
+            paddingHorizontal: 16, paddingVertical: 10,
+            borderRadius: 10,
+          }}
         >
-          <View style={{
-            width: 24, height: 24, borderRadius: 12,
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            <MaterialIcons name="add" size={16} color="white" />
-          </View>
-          <Text style={{ fontSize: 13, color: 'white', fontWeight: '800' }}>Add task</Text>
-        </Pressable>
+          <MaterialIcons name="add" size={16} color="white" />
+          <RNText style={{ fontSize: 13, color: 'white', fontWeight: '700' }}>Add Task</RNText>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -165,63 +167,54 @@ export default function ListDetailScreen() {
 
       <View style={{ flex: 1, paddingHorizontal: 20 }}>
         <FlatList
-          data={tasks}
+          data={activeTasks}
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
-            <TaskItem task={item} onToggle={handleToggle} onDelete={handleDelete} />
+            <TaskItem task={item} onToggle={handleToggle} onDelete={handleDelete} onEdit={setEditingTask} />
           )}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={
-            <EmptyState
-              icon="check-circle-outline"
-              title="No tasks yet"
-              subtitle="Add your first task to get started"
-            />
+            activeTasks.length === 0 && completedTasks.length === 0 ? (
+              <EmptyState
+                icon="check-circle-outline"
+                title="No tasks yet"
+                subtitle="Add your first task to get started"
+              />
+            ) : null
+          }
+          ListFooterComponent={
+            completedTasks.length > 0 ? (
+              <View style={{ marginTop: 8 }}>
+                <Pressable
+                  onPress={() => setShowCompleted(v => !v)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 }}
+                >
+                  <MaterialIcons
+                    name={showCompleted ? 'expand-less' : 'expand-more'}
+                    size={20} color="#9BA1A6"
+                  />
+                  <Text style={{ color: '#9BA1A6', fontSize: 14, fontWeight: '600' }}>
+                    Completed ({completedTasks.length})
+                  </Text>
+                </Pressable>
+                {showCompleted && completedTasks.map(item => (
+                  <TaskItem
+                    key={item.id}
+                    task={item}
+                    onToggle={handleToggle}
+                    onDelete={handleDelete}
+                    onEdit={setEditingTask}
+                  />
+                ))}
+              </View>
+            ) : null
           }
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color} />
           }
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         />
-
-        {/* FAB extendido */}
-        <Pressable
-          onPress={() => setShowCreate(true)}
-          style={({ pressed }) => ({
-            position: 'absolute',
-            bottom: insets.bottom + 20,
-            left: 0, right: 0,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            backgroundColor: color,
-            paddingVertical: 18,
-            borderRadius: 20,
-            borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)',
-            borderBottomWidth: 2, borderBottomColor: 'rgba(0,0,0,0.22)',
-            borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.1)',
-            borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.1)',
-            shadowColor: color,
-            shadowOffset: { width: 0, height: 10 },
-            shadowOpacity: pressed ? 0.2 : 0.55,
-            shadowRadius: 20,
-            elevation: 12,
-            transform: [{ scale: pressed ? 0.98 : 1 }],
-          })}
-        >
-          <View style={{
-            width: 30, height: 30, borderRadius: 15,
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            <MaterialIcons name="add" size={20} color="white" />
-          </View>
-          <Text style={{ color: 'white', fontSize: 17, fontWeight: '800', letterSpacing: 0.3 }}>
-            Add Task
-          </Text>
-        </Pressable>
       </View>
 
       <CreateTaskSheet
@@ -231,6 +224,16 @@ export default function ListDetailScreen() {
         onCreated={task => {
           setTasks(prev => [task, ...prev]);
           setShowCreate(false);
+        }}
+      />
+      <EditTaskSheet
+        visible={!!editingTask}
+        task={editingTask}
+        listId={id}
+        onClose={() => setEditingTask(null)}
+        onUpdated={updated => {
+          setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
+          setEditingTask(null);
         }}
       />
     </View>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal, View, TextInput, Pressable,
   KeyboardAvoidingView, Platform, TouchableWithoutFeedback, ActivityIndicator, TouchableOpacity,
@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Text } from '@/components/ui/text';
 import { Text as RNText } from 'react-native';
-import { createTaskItem } from '@/services/tasks/taskItems';
+import { updateTaskItem } from '@/services/tasks/taskItems';
 import { Task, TaskPriority } from '@/types/Task';
 
 const PRIORITIES: { value: TaskPriority; label: string; icon: keyof typeof MaterialIcons.glyphMap; color: string }[] = [
@@ -18,12 +18,13 @@ const PRIORITIES: { value: TaskPriority; label: string; icon: keyof typeof Mater
 
 type Props = {
   visible: boolean;
+  task: Task | null;
   listId: string;
   onClose: () => void;
-  onCreated: (task: Task) => void;
+  onUpdated: (task: Task) => void;
 };
 
-export default function CreateTaskSheet({ visible, listId, onClose, onCreated }: Props) {
+export default function EditTaskSheet({ visible, task, listId, onClose, onUpdated }: Props) {
   const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -31,24 +32,31 @@ export default function CreateTaskSheet({ visible, listId, onClose, onCreated }:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const reset = () => { setTitle(''); setDescription(''); setPriority('medium'); setError(''); };
+  useEffect(() => {
+    if (visible && task) {
+      setTitle(task.title);
+      setDescription(task.description ?? '');
+      setPriority(task.priority);
+      setError('');
+    }
+  }, [visible, task]);
 
-  const handleClose = () => { reset(); onClose(); };
+  const handleClose = () => { setError(''); onClose(); };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!title.trim()) { setError('Title is required'); return; }
+    if (!task) return;
     setError('');
     setLoading(true);
     try {
-      const task = await createTaskItem({
-        listId, title: title.trim(),
+      const updated = await updateTaskItem(listId, task.id, {
+        title: title.trim(),
         description: description.trim() || undefined,
-        priority, completed: false,
+        priority,
       });
-      onCreated(task);
-      reset();
+      onUpdated(updated);
     } catch {
-      setError('Could not create task. Is the backend running?');
+      setError('Could not update task. Is the backend running?');
     } finally {
       setLoading(false);
     }
@@ -66,18 +74,15 @@ export default function CreateTaskSheet({ visible, listId, onClose, onCreated }:
                 paddingTop: 12, paddingHorizontal: 24,
                 paddingBottom: Math.max(insets.bottom, 16) + 16,
               }}>
-                {/* Handle */}
                 <View style={{ width: 36, height: 4, backgroundColor: '#3A3D40', borderRadius: 99, alignSelf: 'center', marginBottom: 24 }} />
 
-                {/* Header */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                  <Text style={{ fontSize: 20, fontWeight: '700', color: '#ECEDEE' }}>New Task</Text>
+                  <Text style={{ fontSize: 20, fontWeight: '700', color: '#ECEDEE' }}>Edit Task</Text>
                   <Pressable onPress={handleClose} hitSlop={8}>
                     <MaterialIcons name="close" size={22} color="#9BA1A6" />
                   </Pressable>
                 </View>
 
-                {/* Title */}
                 <Text style={{ fontSize: 13, color: '#9BA1A6', fontWeight: '600', marginBottom: 8 }}>Title *</Text>
                 <View style={{
                   backgroundColor: '#252729', borderWidth: 1, borderColor: '#2D3235',
@@ -86,15 +91,13 @@ export default function CreateTaskSheet({ visible, listId, onClose, onCreated }:
                   <TextInput
                     value={title}
                     onChangeText={setTitle}
-                    placeholder="What needs to be done?"
+                    placeholder="Task title"
                     placeholderTextColor="#4A5258"
                     style={{ color: '#ECEDEE', fontSize: 15 }}
-                    returnKeyType="next"
                     autoFocus
                   />
                 </View>
 
-                {/* Notes */}
                 <Text style={{ fontSize: 13, color: '#9BA1A6', fontWeight: '600', marginBottom: 8 }}>Notes</Text>
                 <View style={{
                   backgroundColor: '#252729', borderWidth: 1, borderColor: '#2D3235',
@@ -111,7 +114,6 @@ export default function CreateTaskSheet({ visible, listId, onClose, onCreated }:
                   />
                 </View>
 
-                {/* Priority */}
                 <Text style={{ fontSize: 13, color: '#9BA1A6', fontWeight: '600', marginBottom: 12 }}>Priority</Text>
                 <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
                   {PRIORITIES.map(p => (
@@ -145,7 +147,7 @@ export default function CreateTaskSheet({ visible, listId, onClose, onCreated }:
                 )}
 
                 <TouchableOpacity
-                  onPress={handleCreate}
+                  onPress={handleSave}
                   disabled={loading}
                   activeOpacity={0.75}
                   style={{
@@ -157,7 +159,7 @@ export default function CreateTaskSheet({ visible, listId, onClose, onCreated }:
                 >
                   {loading
                     ? <ActivityIndicator color="white" size="small" />
-                    : <RNText style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Add Task</RNText>
+                    : <RNText style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Save Changes</RNText>
                   }
                 </TouchableOpacity>
               </View>

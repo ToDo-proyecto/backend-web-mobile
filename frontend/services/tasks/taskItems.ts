@@ -18,6 +18,15 @@ export const toggleTaskItem = async (listId: string, itemId: string, completed: 
   return res.data;
 };
 
+export const updateTaskItem = async (
+  listId: string,
+  itemId: string,
+  data: Partial<Pick<Task, 'title' | 'description' | 'priority' | 'dueDate'>>
+): Promise<Task> => {
+  const res = await api.put<Task>(`/api/task-lists/${listId}/items/${itemId}`, data);
+  return res.data;
+};
+
 export const deleteTaskItem = async (listId: string, itemId: string): Promise<void> => {
   await api.delete(`/api/task-lists/${listId}/items/${itemId}`);
 };
